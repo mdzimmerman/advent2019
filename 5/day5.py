@@ -13,4 +13,5 @@ if '..' not in sys.path:
 
 from intcode import Intcode
 
-test = 
+test = Intcode("1002,4,3,4,33", debug=True)
+test.run()
