@@ -23,7 +23,21 @@ class Intcode:
     def __init__(self, csvdata, debug=False):
         self.initdata = np.array(csvdata.split(','), dtype=np.int64)
         self.debug = debug
-        
+
+    def get_op(self, data, p):
+        opcode = data[p]
+        if opcode in self.OPS_LOOKUP:
+            return self.OPS_LOOKUP[opcode]
+        else:
+            raise Exception("bad opcode %d at p=%d" % (opcode, p))
+
+    def get_params(self, op, data, p):
+        params = []
+        for _ in range(op.params):
+            p += 1
+            params.append(data[p])
+        p += 1
+        return params, p
 
     def run(self, noun=None, verb=None):
         p = 0
@@ -34,20 +48,15 @@ class Intcode:
             data[2] = verb
         if self.debug: self.print_data(data)
         while True:
-            opcode = data[p]
-            if opcode == 99:
+            op = self.get_op(data, p)
+            params, p = self.get_params(op, data, p)
+            if op.name == 'Add':
+                data[params[2]] = data[params[0]] + data[params[1]]
+            elif op.name == 'Mult':
+                data[params[2]] = data[params[0]] * data[params[1]]
+            elif op.name == 'Stop':
                 return data[0]
-            a = data[p+1]
-            b = data[p+2]
-            c = data[p+3]
-            if opcode == 1:
-                data[c] = data[a] + data[b]
-            elif opcode == 2:
-                data[c] = data[a] * data[b]
-            else:
-                raise Exception("bad opcode %d at p=%d" % (opcode, p))
             if self.debug: self.print_data(data)
-            p = p + 4
 
     def run_all(self, stop=None):
         for n in range(100):
@@ -63,5 +72,3 @@ class Intcode:
 if __name__ == '__main__':
     test = Intcode('1,9,10,3,2,3,11,0,99,30,40,50', debug=True)
     test.run()
-    print(test.OPS)
-    print(test.OPS_LOOKUP)
