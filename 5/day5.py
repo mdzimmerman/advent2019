@@ -13,5 +13,11 @@ if '..' not in sys.path:
 
 from intcode import Intcode
 
-test = Intcode("1002,4,3,4,33", debug=True)
+test = Intcode("1002,4,3,4,33", debug=2)
 test.run()
+
+inp = Intcode.from_file("input.txt", debug=1)
+#print(inp.initdata)
+inp.run(inp=1)
+
+inp.run(inp=5)

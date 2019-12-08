@@ -15,6 +15,10 @@ class Intcode:
         Op("Mult", 2, 3),
         Op("Input", 3, 1),
         Op("Output", 4, 1),
+        Op("JumpIfTrue", 5, 2),
+        Op("JumpIfFalse", 6, 2),
+        Op("LessThan", 7, 3),
+        Op("Equals", 8, 3),
         Op("Stop", 99, 0)]
     OPS_LOOKUP = {}
     for op in OPS:
@@ -24,12 +28,33 @@ class Intcode:
         self.initdata = np.array(csvdata.split(','), dtype=np.int64)
         self.debug = debug
 
+    @classmethod
+    def from_file(cls, filename, debug=False):
+        csvdata = ""
+        with open(filename, "r") as fh:
+            for l in fh:
+                csvdata += l.rstrip()
+        return cls(csvdata, debug=debug)
+
     def get_op(self, data, p):
-        opcode = data[p]
+        opcode = (data[p]) % 100
+        #print(opcode)
         if opcode in self.OPS_LOOKUP:
-            return self.OPS_LOOKUP[opcode]
+            op = self.OPS_LOOKUP[opcode]
+            pmodes = []
+            for i in range(op.params):
+                pmode = (data[p] // (10 ** (i+2))) % 10
+                pmodes.append(pmode)
+            #print(op, pmodes)
+            return op, pmodes
         else:
             raise Exception("bad opcode %d at p=%d" % (opcode, p))
+
+    def get(self, data, pval, pmode):
+        if pmode == 1:
+            return pval
+        else:
+            return data[pval]
 
     def get_params(self, op, data, p):
         params = []
@@ -39,24 +64,49 @@ class Intcode:
         p += 1
         return params, p
 
-    def run(self, noun=None, verb=None):
+    def run(self, noun=None, verb=None, inp=1):
         p = 0
         data = np.copy(self.initdata)
         if noun != None:
             data[1] = noun
         if verb != None:
             data[2] = verb
-        if self.debug: self.print_data(data)
+        if self.debug >= 2: 
+            self.print_data(data)
         while True:
-            op = self.get_op(data, p)
-            params, p = self.get_params(op, data, p)
+            op, pmodes = self.get_op(data, p)
+            params, pn = self.get_params(op, data, p)
+            if self.debug >= 1:
+                print("#%-11s %-16s %-10s %3d" % (op.name, params, pmodes, pn))
             if op.name == 'Add':
-                data[params[2]] = data[params[0]] + data[params[1]]
+                data[params[2]] = self.get(data, params[0], pmodes[0]) + self.get(data, params[1], pmodes[1])
             elif op.name == 'Mult':
-                data[params[2]] = data[params[0]] * data[params[1]]
+                data[params[2]] = self.get(data, params[0], pmodes[0]) * self.get(data, params[1], pmodes[1])
+            elif op.name == 'Input':
+                data[params[0]] = inp
+            elif op.name == 'Output':
+                print(self.get(data, params[0], pmodes[0]))
+            elif op.name == 'JumpIfTrue':
+                if self.get(data, params[0], pmodes[0]) != 0:
+                    pn = self.get(data, params[1], pmodes[1])
+            elif op.name == 'JumpIfFalse':
+                if self.get(data, params[0], pmodes[0]) == 0:
+                    pn = self.get(data, params[1], pmodes[1])
+            elif op.name == 'LessThan':
+                res = 0
+                if self.get(data, params[0], pmodes[0]) < self.get(data, params[1], pmodes[1]):
+                    res = 1
+                data[params[2]] = res
+            elif op.name == 'Equals':
+                res = 0
+                if self.get(data, params[0], pmodes[0]) == self.get(data, params[1], pmodes[1]):
+                    res = 1
+                data[params[2]] = res
             elif op.name == 'Stop':
-                return data[0]
-            if self.debug: self.print_data(data)
+                return
+            p = pn
+            if self.debug >=2:
+                self.print_data(data)
 
     def run_all(self, stop=None):
         for n in range(100):
