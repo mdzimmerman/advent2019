@@ -9,6 +9,62 @@ class Op:
     def __repr__(self):
         return ("Op(name=%s opcode=%d params=%d)" % (self.name, self.opcode, self.params))
 
+class IntcodeProcess():
+    def __init__(self, intcode):
+        self.intcode = intcode
+        self.inp = []
+        self.output = []
+        self.state = 'INITIALIZED'
+        self.data = np.copy(self.intcode.initdata)
+        self.pointer = 0
+
+    def get(self, param, mode):
+        if mode == 1:
+            return param
+        else:
+            return self.data[param]
+        
+    def set(self, i, value):
+        self.data[i] = value
+            
+    def run_to_next_output(self):
+        while True:
+            op, pmodes = self.intcode.get_op(self.data, self.pointer)
+            params, pn = self.intcode.get_params(op, self.data, self.pointer)
+            if self.debug >= 1:
+                print("#%-11s %-16s %-10s %3d" % (op.name, params, pmodes, pn))
+            if op.name == 'Add':
+                self.set(params[2], self.get(params[0], pmodes[0]) + self.get(params[1], pmodes[1])
+            elif op.name == 'Mult':
+                self.data[params[2]] = self.get(self.data, params[0], pmodes[0]) * self.get(self.data, params[1], pmodes[1])
+            elif op.name == 'Input':
+                self.data[params[0]] = self.inpstack.pop()
+            elif op.name == 'Output':
+                out = self.get(params[0], pmodes[0])
+                if self.debug >= 1: print(out)
+                output.append(out)
+            elif op.name == 'JumpIfTrue':
+                if self.get(data, params[0], pmodes[0]) != 0:
+                    pn = self.get(data, params[1], pmodes[1])
+            elif op.name == 'JumpIfFalse':
+                if self.get(data, params[0], pmodes[0]) == 0:
+                    pn = self.get(data, params[1], pmodes[1])
+            elif op.name == 'LessThan':
+                res = 0
+                if self.get(data, params[0], pmodes[0]) < self.get(data, params[1], pmodes[1]):
+                    res = 1
+                data[params[2]] = res
+            elif op.name == 'Equals':
+                res = 0
+                if self.get(data, params[0], pmodes[0]) == self.get(data, params[1], pmodes[1]):
+                    res = 1
+                data[params[2]] = res
+            elif op.name == 'Stop':
+                return output
+            self.pointer = pn
+            if self.debug >=2:
+                self.print_data(data)
+        
 class Intcode:
     OPS = [
         Op("Add", 1, 3),
@@ -51,10 +107,7 @@ class Intcode:
             raise Exception("bad opcode %d at p=%d" % (opcode, p))
 
     def get(self, data, pval, pmode):
-        if pmode == 1:
-            return pval
-        else:
-            return data[pval]
+
 
     def get_params(self, op, data, p):
         params = []
