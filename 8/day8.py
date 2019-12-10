@@ -35,7 +35,7 @@ class SIF:
         else: 
             return a
 
-    vflatten = np.vectorize(SIF.flatten)
+    vflatten = np.vectorize(flatten)
     
     def decode(self):
         out = self.layers[0].copy()
