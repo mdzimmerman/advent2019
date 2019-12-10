@@ -64,7 +64,9 @@ class Intcode:
         p += 1
         return params, p
 
-    def run(self, noun=None, verb=None, inp=1):
+    def run(self, noun=None, verb=None, inp=[]):
+        inpstack = inp[:]
+        inpstack.reverse()
         p = 0
         data = np.copy(self.initdata)
         if noun != None:
@@ -73,6 +75,7 @@ class Intcode:
             data[2] = verb
         if self.debug >= 2: 
             self.print_data(data)
+        output = []
         while True:
             op, pmodes = self.get_op(data, p)
             params, pn = self.get_params(op, data, p)
@@ -83,9 +86,11 @@ class Intcode:
             elif op.name == 'Mult':
                 data[params[2]] = self.get(data, params[0], pmodes[0]) * self.get(data, params[1], pmodes[1])
             elif op.name == 'Input':
-                data[params[0]] = inp
+                data[params[0]] = inpstack.pop()
             elif op.name == 'Output':
-                print(self.get(data, params[0], pmodes[0]))
+                out = self.get(data, params[0], pmodes[0])
+                if self.debug >= 1: print(out)
+                output.append(out)
             elif op.name == 'JumpIfTrue':
                 if self.get(data, params[0], pmodes[0]) != 0:
                     pn = self.get(data, params[1], pmodes[1])
@@ -103,7 +108,7 @@ class Intcode:
                     res = 1
                 data[params[2]] = res
             elif op.name == 'Stop':
-                return
+                return output
             p = pn
             if self.debug >=2:
                 self.print_data(data)
