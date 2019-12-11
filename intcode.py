@@ -127,8 +127,8 @@ class Intcode:
             params.append(data[p])
         p += 1
         return params, p
-
-    def run(self, noun=None, verb=None, inp=[]):
+    
+    def create_process(self, noun=None, verb=None, inp=[]):
         process = IntcodeProcess(self)
         if noun != None:
             process.set_value(1, noun)
@@ -136,6 +136,10 @@ class Intcode:
             process.set_value(2, verb)
         for i in inp:
             process.set_input(i)
+        return process
+    
+    def run(self, noun=None, verb=None, inp=[]):
+        process = self.create_process(noun, verb, inp)
         output = []
         while process.state != 'TERMINATED':
             out = process.run_to_next_output()
