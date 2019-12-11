@@ -1,3 +1,5 @@
+import queue
+
 import numpy as np
 
 class Op:
@@ -12,11 +14,15 @@ class Op:
 class IntcodeProcess():
     def __init__(self, intcode):
         self.intcode = intcode
-        self.inp = []
+        self.debug = intcode.debug
+        self.inp = queue.Queue()
         self.output = []
-        self.state = 'INITIALIZED'
+        self.state = 'RUNNING'
         self.data = np.copy(self.intcode.initdata)
         self.pointer = 0
+
+    def set_input(self, value):
+        self.inp.put(value, block=False)
 
     def get(self, param, mode):
         if mode == 1:
@@ -24,46 +30,54 @@ class IntcodeProcess():
         else:
             return self.data[param]
         
-    def set(self, i, value):
+    def set_value(self, i, value):
         self.data[i] = value
             
     def run_to_next_output(self):
-        while True:
+        if self.state == 'TERMINATED':
+            return None
+        self.state = 'RUNNING'
+        output = None
+        while self.state == 'RUNNING':
             op, pmodes = self.intcode.get_op(self.data, self.pointer)
             params, pn = self.intcode.get_params(op, self.data, self.pointer)
             if self.debug >= 1:
                 print("#%-11s %-16s %-10s %3d" % (op.name, params, pmodes, pn))
             if op.name == 'Add':
-                self.set(params[2], self.get(params[0], pmodes[0]) + self.get(params[1], pmodes[1])
+                self.set_value(params[2], self.get(params[0], pmodes[0]) + self.get(params[1], pmodes[1]))
             elif op.name == 'Mult':
-                self.data[params[2]] = self.get(self.data, params[0], pmodes[0]) * self.get(self.data, params[1], pmodes[1])
+                self.set_value(params[2], self.get(params[0], pmodes[0]) * self.get(params[1], pmodes[1]))
             elif op.name == 'Input':
-                self.data[params[0]] = self.inpstack.pop()
+                self.set_value(params[0], self.inp.get(block=False))
             elif op.name == 'Output':
-                out = self.get(params[0], pmodes[0])
-                if self.debug >= 1: print(out)
-                output.append(out)
+                output = self.get(params[0], pmodes[0])
+                if self.debug >= 1: 
+                    print(output)
+                self.output
+                self.state = 'BLOCKING_OUTPUT'
             elif op.name == 'JumpIfTrue':
-                if self.get(data, params[0], pmodes[0]) != 0:
-                    pn = self.get(data, params[1], pmodes[1])
+                if self.get(params[0], pmodes[0]) != 0:
+                    pn = self.get(params[1], pmodes[1])
             elif op.name == 'JumpIfFalse':
-                if self.get(data, params[0], pmodes[0]) == 0:
-                    pn = self.get(data, params[1], pmodes[1])
+                if self.get(params[0], pmodes[0]) == 0:
+                    pn = self.get(params[1], pmodes[1])
             elif op.name == 'LessThan':
                 res = 0
-                if self.get(data, params[0], pmodes[0]) < self.get(data, params[1], pmodes[1]):
+                if self.get(params[0], pmodes[0]) < self.get(params[1], pmodes[1]):
                     res = 1
-                data[params[2]] = res
+                self.set_value(params[2], res)
             elif op.name == 'Equals':
                 res = 0
-                if self.get(data, params[0], pmodes[0]) == self.get(data, params[1], pmodes[1]):
+                if self.get(params[0], pmodes[0]) == self.get(params[1], pmodes[1]):
                     res = 1
-                data[params[2]] = res
+                self.set_value(params[2], res)
             elif op.name == 'Stop':
-                return output
+                self.state = 'TERMINATED'
             self.pointer = pn
             if self.debug >=2:
-                self.print_data(data)
+                self.print_data(self.data)
+        
+        return output
         
 class Intcode:
     OPS = [
@@ -106,9 +120,6 @@ class Intcode:
         else:
             raise Exception("bad opcode %d at p=%d" % (opcode, p))
 
-    def get(self, data, pval, pmode):
-
-
     def get_params(self, op, data, p):
         params = []
         for _ in range(op.params):
@@ -118,53 +129,22 @@ class Intcode:
         return params, p
 
     def run(self, noun=None, verb=None, inp=[]):
-        inpstack = inp[:]
-        inpstack.reverse()
-        p = 0
-        data = np.copy(self.initdata)
+        process = IntcodeProcess(self)
         if noun != None:
-            data[1] = noun
+            process.set_value(1, noun)
         if verb != None:
-            data[2] = verb
-        if self.debug >= 2: 
-            self.print_data(data)
+            process.set_value(2, verb)
+        for i in inp:
+            process.set_input(i)
         output = []
-        while True:
-            op, pmodes = self.get_op(data, p)
-            params, pn = self.get_params(op, data, p)
-            if self.debug >= 1:
-                print("#%-11s %-16s %-10s %3d" % (op.name, params, pmodes, pn))
-            if op.name == 'Add':
-                data[params[2]] = self.get(data, params[0], pmodes[0]) + self.get(data, params[1], pmodes[1])
-            elif op.name == 'Mult':
-                data[params[2]] = self.get(data, params[0], pmodes[0]) * self.get(data, params[1], pmodes[1])
-            elif op.name == 'Input':
-                data[params[0]] = inpstack.pop()
-            elif op.name == 'Output':
-                out = self.get(data, params[0], pmodes[0])
-                if self.debug >= 1: print(out)
-                output.append(out)
-            elif op.name == 'JumpIfTrue':
-                if self.get(data, params[0], pmodes[0]) != 0:
-                    pn = self.get(data, params[1], pmodes[1])
-            elif op.name == 'JumpIfFalse':
-                if self.get(data, params[0], pmodes[0]) == 0:
-                    pn = self.get(data, params[1], pmodes[1])
-            elif op.name == 'LessThan':
-                res = 0
-                if self.get(data, params[0], pmodes[0]) < self.get(data, params[1], pmodes[1]):
-                    res = 1
-                data[params[2]] = res
-            elif op.name == 'Equals':
-                res = 0
-                if self.get(data, params[0], pmodes[0]) == self.get(data, params[1], pmodes[1]):
-                    res = 1
-                data[params[2]] = res
-            elif op.name == 'Stop':
-                return output
-            p = pn
-            if self.debug >=2:
-                self.print_data(data)
+        while process.state != 'TERMINATED':
+            out = process.run_to_next_output()
+            output.append(out)
+            if self.debug >= 2:
+                print(out)
+                print(process.state)
+
+        return output
 
     def run_all(self, stop=None):
         for n in range(100):
