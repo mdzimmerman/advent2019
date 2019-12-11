@@ -32,6 +32,16 @@ class Point:
             return abs(self.x - other.x) + abs(self.y - other.y)
         return NotImplemented        
 
+    @staticmethod
+    def is_between(a, b, c):
+        """Is point c on the line segment between points a and b?"""
+        crossprod = (c.y - a.y) * (b.x - a.x) - (c.x - a.x) * (b.y - a.y)
+        if abs(crossprod) != 0:
+            return False
+        if c.x < min(a.x, b.x) or c.x > max(a.x, b.x) or c.y < min(a.x, b.x) or c.y > max(a.x, b.x):
+            return False
+        return True
+
 class Day10:
     def __init__(self, filename):
         self.data, self.width, self.height = self._read_file(filename)
@@ -53,11 +63,27 @@ class Day10:
         return d, w, h
     
 if __name__ == '__main__':
+    a = Point(0, 0)
+    ptest = [
+            (Point(6,4), Point(1,0)),
+            (Point(6,4), Point(1,1)),
+            (Point(6,4), Point(3,2)),
+            (Point(6,2), Point(3,1))]
+    for b, c in ptest:
+        print(a,b,c,Point.is_between(a,b,c))
+    
     test1 = Day10("test1.txt")
-    print(test1.data)
+    #print(test1.data)
     for a in test1.data:
-        print(a)
-        for b in sorted(test1.data - set([a]), key=lambda x: x.dist(a), reverse=True):
-            print("    ",b, b.dist(a))
+        bs = sorted(test1.data - set([a]), key=lambda x: x.dist(a), reverse=True)
+        for i, b in enumerate(bs):
+            for c in bs[i+1:]:
+                print("check %s-%s %s" % (a, b, c))
 
+        #print(a, bs)
         
+        #for b in sorted(test1.data), key=lambda x: x.dist(a), reverse=True):
+        #    next if b == a:
+        #    print("    ",b, b.dist(a))
+        #    for c in 
+
