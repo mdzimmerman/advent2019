@@ -32,13 +32,14 @@ class Point:
             return abs(self.x - other.x) + abs(self.y - other.y)
         return NotImplemented        
 
-    @staticmethod
-    def is_between(a, b, c):
-        """Is point c on the line segment between points a and b?"""
-        crossprod = (c.y - a.y) * (b.x - a.x) - (c.x - a.x) * (b.y - a.y)
+    def is_between(self, a, b):
+        """Is self on the line segment between points a and b?"""
+        crossprod = (self.y - a.y) * (b.x - a.x) - (self.x - a.x) * (b.y - a.y)
         if abs(crossprod) != 0:
             return False
-        if c.x < min(a.x, b.x) or c.x > max(a.x, b.x) or c.y < min(a.x, b.x) or c.y > max(a.x, b.x):
+        if self.x < min(a.x, b.x) or self.x > max(a.x, b.x):
+            return False
+        if self.y < min(a.y, b.y) or self.y > max(a.y, b.y):
             return False
         return True
 
@@ -62,6 +63,26 @@ class Day10:
                         d.add(Point(i, j))
         return d, w, h
     
+    def find_best_location(self):
+        vis_count = {}
+        for a in self.data:
+            vis_count[a] = 0
+            bs = sorted(self.data - set([a]), key=lambda x: x.dist(a), reverse=True)
+            for i, b in enumerate(bs):
+                visible = True
+                for c in bs[i+1:]:
+                    if c.is_between(a, b):
+                        visible = False
+                        break
+                if visible:
+                    vis_count[a] += 1
+        vis_max, a_max = 0, None
+        for a in sorted(self.data, key=lambda x: (x.y, x.x)):
+            print(a, vis_count[a])
+            if vis_count[a] > vis_max:
+                vis_max, a_max = vis_count[a], a
+        return vis_max, a_max
+    
 if __name__ == '__main__':
     a = Point(0, 0)
     ptest = [
@@ -70,20 +91,10 @@ if __name__ == '__main__':
             (Point(6,4), Point(3,2)),
             (Point(6,2), Point(3,1))]
     for b, c in ptest:
-        print(a,b,c,Point.is_between(a,b,c))
+        print(a, b, c, c.is_between(a, b))
     
     test1 = Day10("test1.txt")
-    #print(test1.data)
-    for a in test1.data:
-        bs = sorted(test1.data - set([a]), key=lambda x: x.dist(a), reverse=True)
-        for i, b in enumerate(bs):
-            for c in bs[i+1:]:
-                print("check %s-%s %s" % (a, b, c))
-
-        #print(a, bs)
-        
-        #for b in sorted(test1.data), key=lambda x: x.dist(a), reverse=True):
-        #    next if b == a:
-        #    print("    ",b, b.dist(a))
-        #    for c in 
-
+    print(test1.find_best_location())
+    
+    inp = Day10("input.txt")
+    print(inp.find_best_location())
