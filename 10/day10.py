@@ -132,25 +132,29 @@ class Day10:
 
         killed = []
         while len(others) > 0:
+            #print(others)
             for s in sorted(slopes, key=lambda x: x.heading):
                 #print(s, s.heading)
                 i = 1
                 p = p0.point_along_slope(s, i)
                 while 0 <= p.x < self.width and 0 <= p.y < self.height:
                     if p in others:
+                        #print("     %s" % (p,))
                         others.remove(p)
                         killed.append(p)
-                        if len(killed) % 10 == 0:
-                            print()
-                            self.print_grid(others)
+                        #if len(killed) % 10 == 0:
+                        #    print()
+                        #    self.print_grid(others)
                         break
-
                     i += 1
                     p = p0.point_along_slope(s, i)
+                else:
+                    slopes.remove(s)  # no longer any points on this vector
             #print()
             #self.print_grid(others)
-        for p in killed:
-            print(p)
+        #for p in killed:
+        #    print(p)
+        return killed
 
     def print_grid(self, data=None):
         if data is None:
@@ -197,9 +201,30 @@ if __name__ == '__main__':
                     if p1 in expected_headings:
                         assert s.heading == expected_headings[p1]
 
-
     test_is_between()
     test_slope()
 
-    test5 = Day10("test6.txt")
-    test5.kill_asteroid(Point(8, 3))
+    print()
+    print("input #1")
+    inp = Day10("input.txt")
+    n, i0 = inp.find_best_location()
+    print(n, i0)
+
+    print()
+    print("test6")
+    test6 = Day10("test6.txt")
+    out6 = test6.kill_asteroid(Point(8, 3))
+    for o in out6[:10]:
+        print(o)
+
+    print()
+    print("test5")
+    test5 = Day10("test5.txt")
+    out5 = test5.kill_asteroid(Point(11, 13))
+    print("out[199] = %s" % (out5[199],))
+
+    print()
+    print("input #2")
+    out = inp.kill_asteroid(i0)
+    print(out[199])
+

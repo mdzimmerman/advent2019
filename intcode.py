@@ -2,6 +2,9 @@ import queue
 
 import numpy as np
 
+RUNNING, BLOCKING_OUTPUT, TERMINATED = 0, 1, 2
+
+
 class Op:
     def __init__(self, name, opcode, params):
         self.name = name
@@ -11,50 +14,65 @@ class Op:
     def __repr__(self):
         return ("Op(name=%s opcode=%d params=%d)" % (self.name, self.opcode, self.params))
 
+
 class IntcodeProcess():
     def __init__(self, intcode):
         self.intcode = intcode
         self.debug = intcode.debug
         self.inp = queue.Queue()
         self.output = []
-        self.state = 'RUNNING'
+        self.state = RUNNING
         self.data = np.copy(self.intcode.initdata)
+        self.relbase = 0
         self.pointer = 0
+
+    def is_terminated(self):
+        return self.state == TERMINATED
 
     def set_input(self, value):
         self.inp.put(value, block=False)
 
     def get(self, param, mode):
+        if mode == 2:
+            i = self.relbase + param
+            self._resize_data(i)
+            return self.data[i]
         if mode == 1:
             return param
         else:
-            return self.data[param]
-        
-    def set_value(self, i, value):
+            i = param
+            self._resize_data(i)
+            return self.data[i]
+
+    def set_value(self, param, pmode, value):
+        i = param
+        if pmode == 2:
+            i = self.relbase + param
+        self._resize_data(i)
         self.data[i] = value
             
     def run_to_next_output(self):
-        if self.state == 'TERMINATED':
+        if self.state == TERMINATED:
             return None
-        self.state = 'RUNNING'
+        self.state = RUNNING
         output = None
-        while self.state == 'RUNNING':
+        while self.state == RUNNING:
             op, pmodes = self.intcode.get_op(self.data, self.pointer)
             params, pn = self.intcode.get_params(op, self.data, self.pointer)
             if self.debug >= 1:
                 print("#%-11s %-16s %-10s %3d" % (op.name, params, pmodes, pn))
             if op.name == 'Add':
-                self.set_value(params[2], self.get(params[0], pmodes[0]) + self.get(params[1], pmodes[1]))
+                self.set_value(params[2], pmodes[2], self.get(params[0], pmodes[0]) + self.get(params[1], pmodes[1]))
             elif op.name == 'Mult':
-                self.set_value(params[2], self.get(params[0], pmodes[0]) * self.get(params[1], pmodes[1]))
+                self.set_value(params[2], pmodes[2], self.get(params[0], pmodes[0]) * self.get(params[1], pmodes[1]))
             elif op.name == 'Input':
-                self.set_value(params[0], self.inp.get(block=False))
+                self.set_value(params[0], pmodes[0], self.inp.get(block=False))
             elif op.name == 'Output':
                 output = self.get(params[0], pmodes[0])
                 if self.debug >= 1: 
                     print(output)
-                self.output
-                self.state = 'BLOCKING_OUTPUT'
+                self.output.append(output)
+                self.state = BLOCKING_OUTPUT
             elif op.name == 'JumpIfTrue':
                 if self.get(params[0], pmodes[0]) != 0:
                     pn = self.get(params[1], pmodes[1])
@@ -65,20 +83,30 @@ class IntcodeProcess():
                 res = 0
                 if self.get(params[0], pmodes[0]) < self.get(params[1], pmodes[1]):
                     res = 1
-                self.set_value(params[2], res)
+                self.set_value(params[2], pmodes[2], res)
             elif op.name == 'Equals':
                 res = 0
                 if self.get(params[0], pmodes[0]) == self.get(params[1], pmodes[1]):
                     res = 1
-                self.set_value(params[2], res)
+                self.set_value(params[2], pmodes[2], res)
+            elif op.name == 'AdjustRel':
+                self.relbase += self.get(params[0], pmodes[0])
             elif op.name == 'Stop':
-                self.state = 'TERMINATED'
+                self.state = TERMINATED
             self.pointer = pn
             if self.debug >=2:
-                self.print_data(self.data)
+                print(self.data)
         
         return output
-        
+
+    def _resize_data(self, i):
+        """Resize data if i refers to an index beyond the current size of the ndarray"""
+
+        # TODO: probably should resize to the next largest power of 2 rather than i+1
+        if i >= self.data.shape[0]:
+            self.data.resize(i+1)
+
+
 class Intcode:
     OPS = [
         Op("Add", 1, 3),
@@ -89,6 +117,7 @@ class Intcode:
         Op("JumpIfFalse", 6, 2),
         Op("LessThan", 7, 3),
         Op("Equals", 8, 3),
+        Op("AdjustRel", 9, 1),
         Op("Stop", 99, 0)]
     OPS_LOOKUP = {}
     for op in OPS:
@@ -140,15 +169,10 @@ class Intcode:
     
     def run(self, noun=None, verb=None, inp=[]):
         process = self.create_process(noun, verb, inp)
-        output = []
-        while process.state != 'TERMINATED':
-            out = process.run_to_next_output()
-            output.append(out)
-            if self.debug >= 2:
-                print(out)
-                print(process.state)
+        while process.state != TERMINATED:
+            process.run_to_next_output()
 
-        return output
+        return process.output
 
     def run_all(self, stop=None):
         for n in range(100):

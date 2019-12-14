@@ -54,7 +54,7 @@ class Day7:
                 #print(out)
                 if out != None:
                     outall.append(out)
-                if amp_process[i].state == 'TERMINATED':
+                if amp_process[i].is_terminated():
                     print(outall)
                     return outall[-1]
                 inp = out
