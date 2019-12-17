@@ -52,7 +52,7 @@ class Op:
 
 
 class IntcodeProcess:
-    RUNNING, BLOCKING_OUTPUT, TERMINATED = 0, 1, 2
+    RUNNING, BLOCKING_OUTPUT, TERMINATED, BLOCKING_INPUT = 0, 1, 2, 3
 
     def __init__(self, intcode):
         self.intcode = intcode
@@ -63,6 +63,9 @@ class IntcodeProcess:
         self.data = np.copy(self.intcode.initdata)
         self.relbase = 0
         self.pointer = 0
+
+    def is_blocking_for_input(self):
+        return self.state == self.BLOCKING_INPUT
 
     def is_terminated(self):
         return self.state == self.TERMINATED
@@ -106,6 +109,10 @@ class IntcodeProcess:
             elif op.optype.name == 'Mult':
                 self.set_value(params[2], pmodes[2], self.get(params[0], pmodes[0]) * self.get(params[1], pmodes[1]))
             elif op.optype.name == 'Input':
+                if self.inp.empty():
+                    self.state = self.BLOCKING_INPUT
+                    # don't update pointer so we come back to this point
+                    return None
                 self.set_value(params[0], pmodes[0], self.inp.get(block=False))
             elif op.optype.name == 'Output':
                 output = self.get(params[0], pmodes[0])
@@ -113,6 +120,8 @@ class IntcodeProcess:
                     print(output)
                 self.output.append(output)
                 self.state = self.BLOCKING_OUTPUT
+                self.pointer = pn
+                return output
             elif op.optype.name == 'JumpIfTrue':
                 if self.get(params[0], pmodes[0]) != 0:
                     pn = self.get(params[1], pmodes[1])
@@ -133,10 +142,10 @@ class IntcodeProcess:
                 self.relbase += self.get(params[0], pmodes[0])
             elif op.optype.name == 'Stop':
                 self.state = self.TERMINATED
+                return None
             self.pointer = pn
             if self.debug >= 2:
                 print(self.data)
-        return output
 
     def _resize_data(self, i):
         """Resize data if i refers to an index beyond the current size of the ndarray"""
