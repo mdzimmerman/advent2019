@@ -62,7 +62,7 @@ if __name__ == '__main__':
     print(fft("80871224585914546619083218645595", 100)[:8])
     print("input")
     print(fft(inp, 100)[:8])
-    
+
     print()
     print("-- part2 --")
     print("tests")
