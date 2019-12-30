@@ -33,8 +33,22 @@ class Point:
         if isinstance(other, Point):
             return abs(self.x - other.x) + abs(self.y - other.y)
         return NotImplemented
-    
-    
+
+    def move(self, d):
+        nx, ny = self.x, self.y
+        if d == 1:
+            ny += 1
+        elif d == 2:
+            ny -= 1
+        elif d == 3:
+            nx -= 1
+        elif d == 4:
+            nx += 1
+        else:
+            raise Exception("bad direction")
+        return Point(nx, ny)
+
+
 class Vec3:
     def __init__(self, x, y, z):
         self.x = x
