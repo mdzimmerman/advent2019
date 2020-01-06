@@ -6,12 +6,27 @@ Created on Sun Dec 15 22:07:51 2019
 """
 
 from copy import deepcopy
+from functools import reduce
 import sys
 
 if '..' not in sys.path:
     sys.path.append('..')
 
 from point import Vec3
+
+def gcd(a, b):
+    """Return greatest common divisor using Euclid's Algorithm."""
+    while b:      
+        a, b = b, a % b
+    return a
+
+def lcm(a, b):
+    """Return lowest common multiple."""
+    return a * b // gcd(a, b)
+
+def lcmm(*args):
+    """Return lcm of args."""   
+    return reduce(lcm, args)
 
 class Planet:
     def __init__(self, x, y, z):
@@ -64,38 +79,6 @@ class Day12:
             setattr(b.vel, dim, getattr(b.vel, dim)-1)
         else:
             pass
-
-    def step_dim(self, dim, planets):
-        for i, a in enumerate(planets):
-            for b in planets[i+1]:
-                self.apply_gravity_dim(a, b, dim)
-        for p in planets:
-            dpos = getattr(p.pos, dim)
-            dvel = getattr(p.vel, dim)
-            setattr(p.pos, dim, dpos + dvel)
-   
-    def run_dim(self, dim):
-        init_pos = tuple([getattr(p.pos, dim) for p in self.initplanets])
-        init_vel = tuple([getattr(p.vel, dim) for p in self.initplanets])
-        print(init_pos, init_vel)
-        pos = tuple([-1] * 4)
-        vel = tuple([-1] * 4)
-        i = 0
-        planets = deepcopy(self.initplanets)
-        print(planets)
-        while pos != init_pos and vel != init_vel:
-            i += 1
-            self.step_dim(dim, planets)
-            pos = tuple([getattr(p.pos, dim) for p in planets])
-            vel = tuple([getattr(p.vel, dim) for p in planets])
-        
-        print(i, init_pos, init_vel)
-        #print(init_pos)
-        #print(init_vel)
-        
-        #init_pos = getattr(self.initplanets.pos, dim)  # should be 0
-        #init_vel = getattr()
-        #while
         
     def system_energy(self, planets):
         te = 0
@@ -107,6 +90,48 @@ class Day12:
         for p in planets:
             print("%s" % (p,))
 
+class System:
+    def __init__(self, planets):
+        self.initpos=[[], [], []]
+        self.initvel=[[], [], []]
+        self.nplanets = 0
+        for p in planets:
+            self.nplanets += 1
+            for i, d in enumerate(p):
+                self.initpos[i].append(d)
+                self.initvel[i].append(0)
+    
+    def step_dim(self, pos, vel):
+        for i in range(self.nplanets):
+            for j in range(i+1, self.nplanets):
+                if pos[i] > pos[j]:
+                    vel[i] -= 1
+                    vel[j] += 1
+                elif pos[i] < pos[j]:
+                    vel[i] += 1
+                    vel[j] -= 1
+        for i in range(self.nplanets):
+            pos[i] += vel[i]
+    
+    def find_dim_repeat(self, d):
+        pos = deepcopy(self.initpos[d])
+        vel = deepcopy(self.initvel[d])
+        i = 1
+        self.step_dim(pos, vel)
+        while pos != self.initpos[d] or vel != self.initvel[d]:
+            i += 1
+            self.step_dim(pos, vel)
+        return i
+    
+    def find_repeat(self):
+        repeats = []
+        for d in range(3):
+            r = self.find_dim_repeat(d)
+            print("d=%d repeat=%d" % (d, r))
+            repeats.append(r)
+        return(lcmm(repeats[0], repeats[1], repeats[2]))
+    
+    
 if __name__ == '__main__':
     print("-- part 1 --")
     print("test1")
@@ -118,7 +143,6 @@ if __name__ == '__main__':
             ])
     test1.run(10)
     
-    print()
     print("test2")
     test2 = Day12([
                 Planet(-8, -10, 0),
@@ -128,7 +152,6 @@ if __name__ == '__main__':
             ])
     test2.run(100)
     
-    print()
     print("input")
     inp = Day12([
                 Planet(-13, 14, -7),
@@ -140,4 +163,30 @@ if __name__ == '__main__':
     
     print()
     print("-- part 2 --")
+    print("test1")
+    t1b = System([
+                [-1, 0, 2],
+                [2, -10, -7],
+                [4, -8, 8],
+                [3, 5, -1]
+            ])
+    print(t1b.find_repeat())
+    
+    print("test2")
+    t2b = System([
+            [-8, -10,  0],
+            [ 5,   5, 10],
+            [ 2,  -7,  3],
+            [ 9,  -8, -3]
+        ])
+    print(t2b.find_repeat())
+    
+    print("input")
+    inpb = System([
+                (-13, 14,  -7),
+                (-18,  9,   0),
+                (  0, -3,  -3),
+                (-15,  3, -13)
+            ])
+    print(inpb.find_repeat())
     
