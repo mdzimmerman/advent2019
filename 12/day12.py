@@ -48,7 +48,6 @@ class Planet:
 class Day12:
     def __init__(self, planets):
         self.initplanets = planets
-        #self.planets = deepcopy(self.initplanets)
 
     def run(self, n):
         t = 0
