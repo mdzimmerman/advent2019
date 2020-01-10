@@ -147,6 +147,13 @@ class IntcodeProcess:
             if self.debug >= 2:
                 print(self.data)
 
+    def run(self):
+        output = []
+        while not self.is_terminated():
+            output.append(self.run_to_next_output())
+        return(output)
+        #return process.output
+
     def _resize_data(self, i):
         """Resize data if i refers to an index beyond the current size of the ndarray"""
 
