@@ -1,4 +1,5 @@
 from collections import defaultdict, deque, namedtuple
+import logging
 import string
 
 import numpy as np
@@ -19,13 +20,21 @@ def build_chararray(filename, fill_value=' '):
         grid[j,:len(l)] = [c for c in l]
     return grid
 
-Point = namedtuple("Point", "x y")
+PointBase = namedtuple("PointBase", "x y")
+class Point(PointBase):
+    DIRS = [(-1, 0), (0, 1), (1, 0), (0, -1)]
+
+    def neighbors(self):
+        for dx, dy in Point.DIRS:
+            yield Point(self.x+dx, self.y+dy)
 
 class Donut:
     UPPERCASE = string.ascii_uppercase
-    DIRS = [(-1, 0), (0, 1), (1, 0), (0, -1)]
 
     def __init__(self, filename):
+        self.logger = logging.getLogger("Donut")
+        self.logger.setLevel(logging.INFO)
+
         self.filename = filename
         self.grid = build_chararray(filename)
         self.height, self.width = self.grid.shape
@@ -40,14 +49,12 @@ class Donut:
             pt = Point(i, j)
             if c == '.':
                 points[pt] = self._get_label(i, j)
-                #print(pt, points[pt])
         return points
 
     def _build_gates(self):
         gates = defaultdict(set)
         for pt, label in self.points.items():
             if label is not None:
-                print(label)
                 gates[label].add(pt)
         return gates
 
@@ -68,23 +75,19 @@ class Donut:
         return None
 
     def _neighbors(self, pt):
-        out = []
-
-        # is this a gate point? look for neighbors of *both* gate points
-        ptlist = [pt]
+        # is this a gate point? the other gate point is also my neighbor
         label = self.points[pt]
-        if label is not None:
-            ptlist = list(self.gates[label])
+        for npt in self.gates[label]:
+            if npt != pt:
+                yield npt
 
         # now check the standard directions
-        for p in ptlist:
-            for dx, dy in Donut.DIRS:
-                npt = Point(p.x+dx, p.y+dy)
-                if npt in self.points:
-                    out.append(npt)
-        return out
+        for npt in pt.neighbors():
+            if npt in self.points:
+                yield npt
 
     def traverse(self):
+        """BFS search for shortest path from start to end"""
         start = next(iter(self.gates['AA']))
         end = next(iter(self.gates['ZZ']))
 
@@ -93,13 +96,14 @@ class Donut:
         queue.append(start)
 
         while queue:
-            p = queue.pop()
+            self.logger.debug(queue)
+            p = queue.popleft()
             pdist = dist[p]
-            print(pdist, p)
+            self.logger.debug("   d={}, phead={}".format(pdist, p))
             if p == end:
                 return pdist
             neighbors = self._neighbors(p)
-            print("neighbors = {}".format(neighbors))
+            self.logger.debug("   neighbors={}".format(neighbors))
             for n in neighbors:
                 if n not in dist:
                     dist[n] = pdist + 1
@@ -111,13 +115,27 @@ class Donut:
         height, width = self.grid.shape
         for j in range(height):
             for i in range(width):
-                print(self.grid[j,i], end="")
+                print(self.grid[j, i], end=" ")
             print()
 
 
 if __name__ == '__main__':
-    d1 = Donut("test1.txt")
-    d1.print_grid()
-    for k, v in d1.gates.items():
-        print(k, v)
-    print(d1.traverse())
+    def test1():
+        t = Donut("test1.txt")
+        t.print_grid()
+        out = t.traverse()
+        print(out)
+        assert out == 23
+
+    def test2():
+        t = Donut("test2.txt")
+        t.print_grid()
+        out = t.traverse()
+        print(out)
+        assert out == 58
+
+    test1()
+    test2()
+
+    inp = Donut("input.txt")
+    print(inp.traverse())
