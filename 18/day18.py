@@ -1,4 +1,4 @@
-from collections import namedtuple
+from collections import deque, namedtuple
 from functools import lru_cache
 import heapq
 import itertools
@@ -86,10 +86,10 @@ class Maze:
         for c in {'@'} | self.all_keys:
             start = self.point_for_char(c)
             visited = {start}
-            queue = [Maze.PrecalcPath(start, dist=0, reqkeys=frozenset())]
+            queue = deque([Maze.PrecalcPath(start, dist=0, reqkeys=frozenset())])
 
             while queue:
-                s = queue.pop(0)
+                s = queue.popleft()
                 if s.point.char in self.all_keys:
                     self.paths[start, s.point] = s
                 for n in self._neighbors(s.point):
@@ -199,14 +199,14 @@ if __name__ == '__main__':
     #t.print_grid()
     #cProfile.run("t.get_available_paths()")
 
-    #for i in range(1, 6):
-    #    f = "test{}.txt".format(i)
-    #    print("--- {} ---".format(f))
-    #    t = Maze.from_file(f)
-    #    t.print_grid()
-    #    print("result = {}".format(t.get_available_paths()))
-    #    print()
+    for i in range(1, 6):
+        f = "test{}.txt".format(i)
+        print("--- {} ---".format(f))
+        t = Maze.from_file(f)
+        t.print_grid()
+        print("result = {}".format(t.get_available_paths()))
+        print()
 
+    print("--- input.txt ---")
     inp = Maze.from_file("input.txt")
-    cProfile.run("inp.get_available_paths()")
-    #print("result = {}".format(inp.get_available_paths()))
+    print("result = {}".format(inp.get_available_paths()))
