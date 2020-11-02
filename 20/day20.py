@@ -69,16 +69,19 @@ class Donut:
 
     def _neighbors(self, pt):
         out = []
-        # is this a gate point?
+
+        # is this a gate point? look for neighbors of *both* gate points
+        ptlist = [pt]
         label = self.points[pt]
         if label is not None:
-            out.append(list(self.gates[label] - set(pt))[0])
+            ptlist = list(self.gates[label])
 
-        # now check the standard dirs
-        for dx, dy in Donut.DIRS:
-            npt = Point(pt.x+dx, pt.y+dy)
-            if npt in self.points:
-                out.append(npt)
+        # now check the standard directions
+        for p in ptlist:
+            for dx, dy in Donut.DIRS:
+                npt = Point(p.x+dx, p.y+dy)
+                if npt in self.points:
+                    out.append(npt)
         return out
 
     def traverse(self):
@@ -92,9 +95,12 @@ class Donut:
         while queue:
             p = queue.pop()
             pdist = dist[p]
+            print(pdist, p)
             if p == end:
-                return dist[p]
-            for n in self._neighbors(p):
+                return pdist
+            neighbors = self._neighbors(p)
+            print("neighbors = {}".format(neighbors))
+            for n in neighbors:
                 if n not in dist:
                     dist[n] = pdist + 1
                     queue.append(n)
