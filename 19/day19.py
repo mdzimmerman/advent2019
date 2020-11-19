@@ -21,7 +21,11 @@ count = 0
 for y in range(60):
     for x in range(100):
         o = ic.run(inp=[x, y])
-        if o[0] == 1:
+        if x * 2 == y * 3:
+            print("1", end="")
+        elif x == 2 * y:
+            print("2", end="")
+        elif o[0] == 1:
             print("#", end="")
             count += 1
         elif o[0] == 0:
