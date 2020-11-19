@@ -6,6 +6,8 @@ Created on Fri Dec 13 23:42:31 2019
 """
 
 class Point:
+    DIRS = [(-1, 0), (0, 1), (1, 0), (0, -1)]
+
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -48,6 +50,9 @@ class Point:
             raise Exception("bad direction")
         return Point(nx, ny)
 
+    def neighbors(self):
+        for dx, dy in Point.DIRS:
+            yield Point(self.x+dx, self.y+dy)
 
 class Vec3:
     def __init__(self, x, y, z):

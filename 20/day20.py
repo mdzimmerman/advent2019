@@ -1,39 +1,21 @@
 from collections import defaultdict, deque, namedtuple
 import logging
 import string
+import sys
+
+if '..' not in sys.path:
+    sys.path.append('..')
 
 import numpy as np
-
-def build_chararray(filename, fill_value=' '):
-    fh = open(filename, "r")
-    lines = []
-    width = 0
-    for l in fh:
-        l = l.rstrip()
-        lines.append(l)
-        if width < len(l):
-            width = len(l)
-    height = len(lines)
-
-    grid = np.full(shape=(height, width), fill_value=fill_value, dtype=str)
-    for j, l in enumerate(lines):
-        grid[j,:len(l)] = [c for c in l]
-    return grid
-
-PointBase = namedtuple("PointBase", "x y")
-class Point(PointBase):
-    DIRS = [(-1, 0), (0, 1), (1, 0), (0, -1)]
-
-    def neighbors(self):
-        for dx, dy in Point.DIRS:
-            yield Point(self.x+dx, self.y+dy)
+from point import Point
+from utils import build_chararray
 
 class Donut:
     UPPERCASE = string.ascii_uppercase
 
     def __init__(self, filename):
         self.logger = logging.getLogger("Donut")
-        self.logger.setLevel(logging.INFO)
+        self.logger.setLevel(logging.DEBUG)
 
         self.filename = filename
         self.grid = build_chararray(filename)

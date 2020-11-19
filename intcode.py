@@ -73,6 +73,12 @@ class IntcodeProcess:
     def set_input(self, value):
         self.inp.put(value, block=False)
 
+    def set_ascii_input(self, lines):
+        for l in lines:
+            for x in [ord(c) for c in l]:
+                self.inp.put(x, block=False)
+            self.inp.put(10, block=False)
+
     def get(self, param, mode):
         if mode == 2:
             i = self.relbase + param
@@ -175,18 +181,22 @@ class Intcode:
                 csvdata += l.rstrip()
         return cls(csvdata, debug=debug)
     
-    def create_process(self, noun=None, verb=None, inp=[]):
+    def create_process(self, noun=None, verb=None, inp=[], ascii_inp=None):
         process = IntcodeProcess(self)
         if noun is not None:
             process.set_value(1, noun)
         if verb is not None:
             process.set_value(2, verb)
-        for i in inp:
-            process.set_input(i)
+
+        if ascii_inp is not None:
+            process.set_ascii_input(ascii_inp)
+        else:
+            for i in inp:
+                process.set_input(i)
         return process
     
-    def run(self, noun=None, verb=None, inp=[]):
-        process = self.create_process(noun, verb, inp)
+    def run(self, noun=None, verb=None, inp=[], ascii_inp=None):
+        process = self.create_process(noun, verb, inp, ascii_inp)
         while not process.is_terminated():
             process.run_to_next_output()
 
