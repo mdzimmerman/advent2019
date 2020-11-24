@@ -1,4 +1,5 @@
 from collections import namedtuple
+from enum import Enum
 import queue
 
 import numpy as np
@@ -51,8 +52,16 @@ class Op:
             raise Exception("bad opcode %d at p=%d" % (opcode, p))
 
 
+class State(Enum):
+    RUNNING         = 0
+    BLOCKING_OUTPUT = 1
+    TERMINATED      = 2
+    BLOCKING_INPUT  = 3
+
+
+
 class IntcodeProcess:
-    RUNNING, BLOCKING_OUTPUT, TERMINATED, BLOCKING_INPUT = 0, 1, 2, 3
+    #RUNNING, BLOCKING_OUTPUT, TERMINATED, BLOCKING_INPUT = 0, 1, 2, 3
 
     def __init__(self, intcode, input_on_empty=None):
         self.intcode = intcode
@@ -60,22 +69,22 @@ class IntcodeProcess:
         self.debug = intcode.debug
         self.inp = queue.Queue()
         self.output = []
-        self.state = self.RUNNING
+        self.state = State.RUNNING
         self.data = np.copy(self.intcode.initdata)
         self.relbase = 0
         self.pointer = 0
 
     def is_running(self):
-        return self.state == self.RUNNING
+        return self.state == State.RUNNING
 
     def is_blocking_for_input(self):
-        return self.state == self.BLOCKING_INPUT
+        return self.state == State.BLOCKING_INPUT
 
     def is_blocking_for_output(self):
-        return self.state == self.BLOCKING_OUTPUT
+        return self.state == State.BLOCKING_OUTPUT
 
     def is_terminated(self):
-        return self.state == self.TERMINATED
+        return self.state == State.TERMINATED
 
     def set_input(self, value):
         self.inp.put(value, block=False)
@@ -106,9 +115,9 @@ class IntcodeProcess:
         self.data[i] = value
 
     def run_step(self):
-        if self.state == self.TERMINATED:
+        if self.state == State.TERMINATED:
             return None
-        self.state = self.RUNNING
+        self.state = State.RUNNING
         op = Op.get_op(self.data, self.pointer)
         params = op.params
         pmodes = op.pmodes
@@ -122,7 +131,7 @@ class IntcodeProcess:
         elif op.optype.name == 'Input':
             if self.inp.empty():
                 if self.input_on_empty is None:
-                    self.state = self.BLOCKING_INPUT
+                    self.state = State.BLOCKING_INPUT
                     # don't update pointer so we come back to this point
                     return None
                 else:
@@ -136,7 +145,7 @@ class IntcodeProcess:
             if self.debug >= 1:
                 print(output)
             self.output.append(output)
-            self.state = self.BLOCKING_OUTPUT
+            self.state = State.BLOCKING_OUTPUT
             self.pointer = pn
             return output
         elif op.optype.name == 'JumpIfTrue':
@@ -158,7 +167,7 @@ class IntcodeProcess:
         elif op.optype.name == 'AdjustRel':
             self.relbase += self.get(params[0], pmodes[0])
         elif op.optype.name == 'Stop':
-            self.state = self.TERMINATED
+            self.state = State.TERMINATED
             return None
         self.pointer = pn
         if self.debug >= 2:
@@ -167,14 +176,16 @@ class IntcodeProcess:
 
     def run_to_next_output(self):
         out = None
-        self.state = self.RUNNING
-        while self.state != self.BLOCKING_OUTPUT:
+        self.state = State.RUNNING
+        while self.state != State.BLOCKING_OUTPUT and self.state != State.TERMINATED:
+            #print(self.state)
             out = self.run_step()
+        #print(self.state, out)
         return out
 
     def run(self):
         output = []
-        while not self.is_terminated():
+        while self.state != State.TERMINATED:
             output.append(self.run_to_next_output())
         return(output)
 
@@ -215,10 +226,7 @@ class Intcode:
     
     def run(self, noun=None, verb=None, inp=[], ascii_inp=None):
         process = self.create_process(noun, verb, inp, ascii_inp)
-        while not process.is_terminated():
-            process.run_to_next_output()
-
-        return process.output
+        return process.run()
 
     def run_all(self, stop=None):
         for n in range(100):

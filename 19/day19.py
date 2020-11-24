@@ -12,23 +12,35 @@ if '..' not in sys.path:
     
 from intcode import Intcode
 
-ic = Intcode.from_file("input.txt")
+ic = Intcode.from_file("input.txt", debug=0)
 
-p = ic.create_process()
+#p = ic.create_process()
 #print(p.run_to_next_output(), p.state)
 
-count = 0
-for y in range(60):
+for y in range(50):
     for x in range(100):
         o = ic.run(inp=[x, y])
-        if x * 2 == y * 3:
-            print("1", end="")
-        elif x == 2 * y:
-            print("2", end="")
-        elif o[0] == 1:
+        if o[0] == 1:
             print("#", end="")
-            count += 1
-        elif o[0] == 0:
+        else:
             print(".", end="")
     print()
-print(count)
+
+
+count = 0
+for x in range(5, 100):
+    y1, y2 = None, None
+    o_last = 0
+    y = 0
+    #print(x)
+    while y2 is None:
+        o = ic.run(inp=[x, y])[0]
+        #print("  ", x, y, o)
+        if o == 1 and o_last == 0:
+            y1 = y
+        elif o == 0 and o_last == 1:
+            y2 = y-1
+        #print(y, o)
+        y += 1
+        o_last = o
+    print(x, y1, y2)
